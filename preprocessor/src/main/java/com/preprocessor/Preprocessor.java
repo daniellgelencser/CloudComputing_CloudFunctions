@@ -46,10 +46,10 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     String fileName = info.getName();
 
     Blob blob = storage.get(BlobId.of(bucketName, fileName));
-    Path download  = Paths.get("/tmp/download/", fileName);
+    Path download  = Paths.get("/tmp/", fileName);
     blob.downloadTo(download);
 
-    File textFile = new File("/tmp/download/" + fileName);
+    File textFile = new File("/tmp/" + fileName);
     ArrayList<String> list = new ArrayList<String>();
 
     if(textFile.canRead()) {
