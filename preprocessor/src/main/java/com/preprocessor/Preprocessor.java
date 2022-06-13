@@ -89,6 +89,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     } catch (IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
+      logger.severe(e.getMessage());
     }
   }
 
