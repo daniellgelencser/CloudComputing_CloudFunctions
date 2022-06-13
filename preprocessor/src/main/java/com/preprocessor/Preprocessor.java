@@ -41,37 +41,49 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
 
     BlobInfo info = BlobInfo.newBuilder(event.getBucket(), event.getName()).build();
 
-    readFile(info, 0, 10);
+    readFile(info, 10);
   }
 
-  public void readFile(BlobInfo info, int blobSize)
-  {
-    readFile(info, 0, blobSize);
-  }
-
-  public void readFile(BlobInfo info, int start, int end)
+  public void readFile(BlobInfo info, long blobSize)
   {
     String inputBucket = info.getBucket();
     String fileName = info.getName();
+    long size = info.getSize();
 
     Blob blob = storage.get(BlobId.of(inputBucket, fileName));
 
+    long start = 0, end = 0;
     try (ReadChannel reader = blob.reader()) {
-      reader.seek(start);
-      ByteBuffer bytes = ByteBuffer.allocate(end - start);
-      reader.read(bytes);
-      bytes.flip();
 
-      String text = "";
-      while (bytes.hasRemaining()) {
-        text += (char) bytes.get();
-      }
-      logger.info(text);
+      do {
+
+        end = start + blobSize - 1;
+        String text = getText(reader, start, end);
+        logger.info(text);
+
+        start = end + 1;
+
+      } while (end < size);
+      
+      reader.close();
 
     } catch (IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
+  }
+
+  private String getText(ReadChannel reader, long start, long end) throws IOException {
+    reader.seek(start);
+    ByteBuffer bytes = ByteBuffer.allocate((int) (end - start));
+    reader.read(bytes);
+    bytes.flip();
+
+    String text = "";
+    while (bytes.hasRemaining()) {
+      text += (char) bytes.get();
+    }
+    return text;
   }
 
   public void testFile(BlobInfo info)
