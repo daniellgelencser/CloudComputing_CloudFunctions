@@ -52,12 +52,12 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     Blob blob = storage.get(BlobId.of(inputBucket, fileName));
     long size = blob.getSize();
 
-    long start = 1, end = 0;
+    long start = 0, end = 0;
     try (ReadChannel reader = blob.reader()) {
 
       do {
 
-        end = start + blobSize -1;
+        end = start + blobSize;
         String text = getText(reader, start, end);
         logger.info(text);
 
