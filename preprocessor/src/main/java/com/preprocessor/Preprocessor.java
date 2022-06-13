@@ -62,6 +62,8 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     WriteChannel writer = storage.writer(outputInfo);
     int writtenBytes = writer.write(ByteBuffer.wrap(chunk, 0, chunk.length));
     logger.info("Created file: " + chunkName + " with length of " + writtenBytes + "bytes");
+
+    writer.close();
   }
 
   public void prepareChunks(long chunkSize) {
