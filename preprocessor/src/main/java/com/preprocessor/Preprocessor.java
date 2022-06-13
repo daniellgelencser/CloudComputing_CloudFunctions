@@ -3,6 +3,7 @@ package com.preprocessor;
 import java.io.File;
 import java.io.FileNotFoundException;
 
+import com.google.cloud.ReadChannel;
 import com.google.cloud.functions.BackgroundFunction;
 import com.google.cloud.functions.Context;
 import com.google.cloud.storage.Blob;
@@ -13,6 +14,7 @@ import com.google.cloud.storage.StorageOptions;
 import com.preprocessor.event.GcsEvent;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,6 +26,8 @@ import java.util.logging.Logger;
 public class Preprocessor implements BackgroundFunction<GcsEvent> {
   private static Storage storage = StorageOptions.getDefaultInstance().getService();
   private static final Logger logger = Logger.getLogger(Preprocessor.class.getName());
+
+  private static String chunksBucket = "cloud-computing-352913-bucket-chunks";
 
   @Override
   public void accept(GcsEvent event, Context context) {
@@ -37,7 +41,37 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
 
     BlobInfo info = BlobInfo.newBuilder(event.getBucket(), event.getName()).build();
 
-    testFile(info);
+    readFile(info, 0, 10);
+  }
+
+  public void readFile(BlobInfo info, int blobSize)
+  {
+    readFile(info, 0, blobSize);
+  }
+
+  public void readFile(BlobInfo info, int start, int end)
+  {
+    String inputBucket = info.getBucket();
+    String fileName = info.getName();
+
+    Blob blob = storage.get(BlobId.of(inputBucket, fileName));
+
+    try (ReadChannel reader = blob.reader()) {
+      reader.seek(start);
+      ByteBuffer bytes = ByteBuffer.allocate(end - start);
+      reader.read(bytes);
+      bytes.flip();
+
+      String text = "";
+      while (bytes.hasRemaining()) {
+        text += (char) bytes.get();
+      }
+      logger.info(text);
+
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
   }
 
   public void testFile(BlobInfo info)
