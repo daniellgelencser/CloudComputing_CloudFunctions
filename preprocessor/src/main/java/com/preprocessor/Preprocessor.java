@@ -61,7 +61,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
         String text = getText(reader, start, end);
         logger.info(text);
 
-        start = end + 1;
+        start = end;
 
       } while (end < size);
       
