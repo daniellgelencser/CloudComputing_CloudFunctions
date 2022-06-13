@@ -48,9 +48,9 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
   {
     String inputBucket = info.getBucket();
     String fileName = info.getName();
-    long size = info.getSize();
 
     Blob blob = storage.get(BlobId.of(inputBucket, fileName));
+    long size = blob.getSize();
 
     long start = 0, end = 0;
     try (ReadChannel reader = blob.reader()) {
