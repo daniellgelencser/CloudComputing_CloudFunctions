@@ -1,5 +1,8 @@
 package com.preprocessor;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+
 import com.google.cloud.functions.BackgroundFunction;
 import com.google.cloud.functions.Context;
 import com.google.cloud.storage.Blob;
@@ -13,6 +16,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Scanner;
 import java.util.logging.Logger;
 
 public class Preprocessor implements BackgroundFunction<GcsEvent> {
@@ -43,7 +49,32 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     Path download  = Paths.get("/tmp/download/", fileName);
     blob.downloadTo(download);
 
+    File textFile = new File("/tmp/download/" + fileName);
+    ArrayList<String> list = new ArrayList<String>();
 
+    if(textFile.canRead()) {
+      try {
+        Scanner reader = new Scanner(textFile);
+
+        while (reader.hasNextLine()) {
+          String line = reader.nextLine();
+          // logger.info(line);
+          list.add(line);
+        }
+
+        reader.close();
+
+      } catch (FileNotFoundException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
+
+    Collections.sort(list);
+
+    for (String str : list) {
+      logger.info(str);
+    }
     
     // Path upload = Paths.get("/tmp/upload/", more)
 
@@ -54,9 +85,5 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
       e.printStackTrace();
     }
     // Files.delete(upload);
-  }
-
-  public void loadFile() {
-
   }
 }
