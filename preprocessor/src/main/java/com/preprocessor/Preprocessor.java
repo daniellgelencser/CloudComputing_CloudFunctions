@@ -72,7 +72,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
 
     long inputSize = inputBlob.getSize();
 
-    long start = 0, end = 0;
+    long start = 0;
     int index = 0;
     try (ReadChannel reader = inputBlob.reader()) {
 
@@ -82,9 +82,9 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
         writeChunk(chunk, index++);
 
         logger.info(new String(chunk));
-        start = end;
+        start += chunkSize;
 
-      } while (end < inputSize);
+      } while (start < inputSize);
 
     } catch (IOException e) {
       // TODO Auto-generated catch block
