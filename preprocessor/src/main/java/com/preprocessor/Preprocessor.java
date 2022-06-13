@@ -32,7 +32,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     logger.info("Updated: " + event.getUpdated());
 
     inputBucket = event.getBucket();
-    outputBucket = System.getenv("OUTPUT_BUCKET");
+    outputBucket = System.getenv("OUTPUT_BUCKET").trim();
     fileName = event.getName();
 
     prepareChunks(100);
