@@ -30,7 +30,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
     private static final String dbPass = System.getenv("DB_PASS");
     private static final String dbName = System.getenv("DB_NAME");
 
-    private static final DataSource connectionPool = getMySqlConnectionPool();
+    private DataSource connectionPool;
 
     @Override
     public void accept(PubSubMessage message, Context context) throws Exception {
@@ -41,12 +41,19 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         }
 
         String data = new String(Base64.getDecoder().decode(message.getData()));
+
+        connectionPool = getMySqlConnectionPool();
         
-        // prepareJobs(data);        
-        executeQuery(
-            "INSERT INTO `job` (`file_name`, `type`, `chunk_one`, `status`)"
-            + "VALUES ('testfile', 'testtype', 'testchunk', 'teststatus')"
-        );
+        // prepareJobs(data);
+        try {
+            executeQuery(
+                "INSERT INTO `job` (`file_name`, `type`, `chunk_one`, `status`)"
+                + "VALUES ('testfile', 'testtype', 'testchunk', 'teststatus')"
+            );
+        } catch (SQLException e) {
+            logger.severe(e.getMessage());
+        }      
+        
     }
 
     private void prepareJobs(String prefix) {
