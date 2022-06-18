@@ -119,10 +119,11 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         }
     }
 
-    public int executeQuery(String query) throws SQLException {
+    public void executeQuery(String query) throws SQLException {
         Connection connection = connectionPool.getConnection();
         PreparedStatement statement = connection.prepareStatement(query);
-        return statement.executeUpdate();
+        statement.executeUpdate();
+        connection.close();
     }
 
     private static DataSource getMySqlConnectionPool() {
