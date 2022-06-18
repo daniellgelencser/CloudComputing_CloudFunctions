@@ -99,7 +99,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         try {
             executeQuery(
                 "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `chunk_two`, `status`)"
-                + "VALUES (" + prefix + ", 'quicksort', " + chunk1 + ", " + chunk2 + ", 'pending')");
+                + "VALUES ('" + prefix + "', 'quicksort', '" + chunk1 + "', '" + chunk2 + "', 'pending')");
         } catch (SQLException e) {
             logger.severe(e.getMessage());
         }
@@ -109,7 +109,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         try {
             executeQuery(
                 "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `status`)"
-                + "VALUES (" + prefix + ", 'quicksort', " + chunk + ", 'pending')");
+                + "VALUES ('" + prefix + "', 'quicksort', '" + chunk + "', 'pending')");
         } catch (SQLException e) {
             logger.severe(e.getMessage());
         }
