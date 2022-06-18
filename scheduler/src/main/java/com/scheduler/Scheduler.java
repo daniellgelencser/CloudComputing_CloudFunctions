@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.logging.Logger;
 
@@ -43,43 +44,84 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         String data = new String(Base64.getDecoder().decode(message.getData()));
 
         connectionPool = getMySqlConnectionPool();
-        
-        // prepareJobs(data);
-        try {
-            executeQuery(
-                "INSERT INTO `cloud_computing`.`job` (`file_name`, `type`, `chunk_one`, `status`)"
-                + "VALUES ('testfile', 'testtype', 'testchunk', 'teststatus')"
-            );
-        } catch (SQLException e) {
-            logger.severe(e.getMessage());
-        }      
-        
+
+        prepareJobs(data);
+        // try {
+        //     executeQuery(
+        //             "INSERT INTO `cloud_computing`.`job` (`file_name`, `type`, `chunk_one`, `status`)"
+        //                     + "VALUES ('testfile', 'testtype', 'testchunk', 'teststatus')");
+        // } catch (SQLException e) {
+        //     logger.severe(e.getMessage());
+        // }
+
     }
 
     private void prepareJobs(String prefix) {
-        Page<Blob> blobs = 
-            storage.list(
+        Page<Blob> blobs = storage.list(
                 inputBucket,
-                Storage.BlobListOption.prefix(prefix)
-                );
+                Storage.BlobListOption.prefix(prefix));
 
-        for(Blob blob: blobs.iterateAll())
-        {
+        int count = 0;
+        for (Blob blob : blobs.iterateAll()) {
             logger.info(blob.getName());
+            insertSortJob(prefix, blob.getName());
+            count++;
         }
-        
+
+        createMergeJobs(prefix, count);
+    }
+
+    public void pubsubStartSort()
+    {
 
     }
 
-    public boolean executeQuery(String query) throws SQLException
+    public void createMergeJobs(String prefix, int chunkCount)
     {
+        int x = 1;
+        do {
+
+            x *= 2;
+            for(int i = 0; i < chunkCount; i += x) {
+                int y = i + x/2;
+                if (y > chunkCount) {
+                    continue;
+                }
+                insertMergeJob(prefix, prefix + "/chunk_" + i + ".txt", prefix + "/chunk_" + y + ".txt");
+            }
+
+        }
+        while (x < chunkCount);
+    }
+
+    public void insertMergeJob(String prefix, String chunk1, String chunk2)
+    {
+        try {
+            executeQuery(
+                "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `chunk_two`, `status`)"
+                + "VALUES (" + prefix + ", 'quicksort', " + chunk1 + ", " + chunk2 + ", 'pending')");
+        } catch (SQLException e) {
+            logger.severe(e.getMessage());
+        }
+    }
+
+    public void insertSortJob(String prefix, String chunk) {
+        try {
+            executeQuery(
+                "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `status`)"
+                + "VALUES (" + prefix + ", 'quicksort', " + chunk + ", 'pending')");
+        } catch (SQLException e) {
+            logger.severe(e.getMessage());
+        }
+    }
+
+    public boolean executeQuery(String query) throws SQLException {
         Connection connection = connectionPool.getConnection();
         PreparedStatement statement = connection.prepareStatement(query);
         return statement.execute();
     }
 
-    private static DataSource getMySqlConnectionPool()
-    {
+    private static DataSource getMySqlConnectionPool() {
         HikariConfig config = new HikariConfig();
 
         config.setJdbcUrl(String.format("jdbc:mysql://%s", dbName));
@@ -90,9 +132,9 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         config.addDataSourceProperty("ipTypes", "PUBLIC,PRIVATE");
         config.setMaximumPoolSize(5);
         config.setMinimumIdle(5);
-        config.setConnectionTimeout(10000); //10s
-        config.setIdleTimeout(600000); //10m
-        config.setMaxLifetime(1800000); //30m
+        config.setConnectionTimeout(10000); // 10s
+        config.setIdleTimeout(600000); // 10m
+        config.setMaxLifetime(1800000); // 30m
 
         return new HikariDataSource(config);
     }
