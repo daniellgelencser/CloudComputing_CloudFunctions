@@ -38,11 +38,10 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     prepareChunks(100);
   }
 
-  public byte[] readFileChunk(ReadChannel reader, long start, long chunkSize) throws IOException {
-    long end = start + chunkSize;
+  private byte[] readFileChunk(ReadChannel reader, long start, long chunkSize) throws IOException {
 
     reader.seek(start);
-    ByteBuffer bytes = ByteBuffer.allocate((int) (end - start));
+    ByteBuffer bytes = ByteBuffer.allocate((int) chunkSize);
     reader.read(bytes);
     bytes.flip();
 
@@ -55,8 +54,9 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     return chunk;
   }
 
-  public void writeChunk(byte[] chunk, int index) throws IOException {
-    String chunkName = fileName.replace(".txt", "_chunk_" + index + ".txt");
+  private void writeChunk(byte[] chunk, int index) throws IOException {
+    String chunkName = fileName.replace(".txt", "");
+    chunkName = chunkName + "/" + chunkName + "_chunk_" + index + ".txt";
     BlobInfo outputInfo = BlobInfo.newBuilder(outputBucket, chunkName).build();
 
     WriteChannel writer = storage.writer(outputInfo);
@@ -66,7 +66,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     writer.close();
   }
 
-  public void prepareChunks(long chunkSize) {
+  private void prepareChunks(long chunkSize) {
 
     Blob inputBlob = storage.get(BlobId.of(inputBucket, fileName));
     if (!inputBlob.exists()) {
