@@ -47,7 +47,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         // prepareJobs(data);
         try {
             executeQuery(
-                "INSERT INTO `job` (`file_name`, `type`, `chunk_one`, `status`)"
+                "INSERT INTO `cloud_computing`.`job` (`file_name`, `type`, `chunk_one`, `status`)"
                 + "VALUES ('testfile', 'testtype', 'testchunk', 'teststatus')"
             );
         } catch (SQLException e) {
