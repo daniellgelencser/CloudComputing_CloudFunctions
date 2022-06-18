@@ -11,6 +11,7 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.preprocessor.event.GcsEvent;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
@@ -56,8 +57,11 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
 
   private void writeChunk(byte[] chunk, int index) throws IOException {
     String chunkName = fileName.replace(".txt", "");
-    chunkName = chunkName + "/" + chunkName + "_chunk_" + index + ".txt";
-    BlobInfo outputInfo = BlobInfo.newBuilder(outputBucket, chunkName).build();
+    chunkName = chunkName + "/chunk_" + index + ".txt";
+
+    logger.info("Uploading chunk: " + chunkName);
+    BlobId blobId = BlobId.of(outputBucket, chunkName);
+    BlobInfo outputInfo = BlobInfo.newBuilder(blobId).build();
 
     WriteChannel writer = storage.writer(outputInfo);
     int writtenBytes = writer.write(ByteBuffer.wrap(chunk, 0, chunk.length));
