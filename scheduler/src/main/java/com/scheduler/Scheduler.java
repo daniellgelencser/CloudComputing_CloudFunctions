@@ -49,6 +49,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         }
 
         String data = new String(Base64.getDecoder().decode(message.getData()));
+        connectionPool = getMySqlConnectionPool();
 
         prepareJobs(data);
 
