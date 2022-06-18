@@ -84,6 +84,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
 
     public void createMergeJobs(String prefix, int chunkCount) {
         int x = 1;
+        int round = 0;
         do {
 
             x *= 2;
@@ -92,17 +93,18 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
                 if (y > chunkCount) {
                     continue;
                 }
-                insertMergeJob(prefix, prefix + "/chunk_" + i + ".txt", prefix + "/chunk_" + y + ".txt");
+                insertMergeJob(prefix, prefix + "/chunk_" + i + ".txt", prefix + "/chunk_" + y + ".txt", round);
             }
+            round++;
 
         } while (x < chunkCount);
     }
 
-    public void insertMergeJob(String prefix, String chunk1, String chunk2) {
+    public void insertMergeJob(String prefix, String chunk1, String chunk2, int round) {
         try {
             executeQuery(
                     "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `chunk_two`, `status`)"
-                            + "VALUES ('" + prefix + "', 'quicksort', '" + chunk1 + "', '" + chunk2 + "', 'pending')");
+                            + "VALUES ('" + prefix + "', 'merge_r'" + round + ", '" + chunk1 + "', '" + chunk2 + "', 'pending')");
         } catch (SQLException e) {
             logger.severe(e.getMessage());
         }
@@ -133,11 +135,6 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         config.addDataSourceProperty("socketFactory", "com.google.cloud.sql.mysql.SocketFactory");
         config.addDataSourceProperty("cloudSqlInstance", dbConnection);
         config.addDataSourceProperty("ipTypes", "PUBLIC,PRIVATE");
-        // config.setMaximumPoolSize(5);
-        // config.setMinimumIdle(5);
-        // config.setConnectionTimeout(10000); // 10s
-        // config.setIdleTimeout(600000); // 10m
-        // config.setMaxLifetime(1800000); // 30m
 
         return new HikariDataSource(config);
     }
