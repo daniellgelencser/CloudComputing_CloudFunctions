@@ -35,8 +35,8 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         Page<Blob> blobs = 
             storage.list(
                 inputBucket,
-                Storage.BlobListOption.prefix(prefix),
-                Storage.BlobListOption.currentDirectory());
+                Storage.BlobListOption.prefix(prefix)
+                );
 
         for(Blob blob: blobs.iterateAll())
         {
