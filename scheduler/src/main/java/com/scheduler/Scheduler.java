@@ -21,13 +21,17 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
     public void accept(PubSubMessage message, Context context) throws Exception {
 
         if (message == null || message.getData() == null) {
-            throw new Exception("Pub/Sub message empty");
+            logger.warning("Pub/Sub message empty");
+            return;
         }
 
+        String data = message.getData();
         
         inputBucket = System.getenv("INPUT_BUCKET");
 
-        prepareJobs(message.getData());        
+        logger.info(data);
+
+        prepareJobs(data);        
     }
 
     private void prepareJobs(String prefix) {
