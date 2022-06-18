@@ -1,4 +1,4 @@
-package com.scheduler.event;
+package com.sorter.event;
 
 import java.util.Map;
 

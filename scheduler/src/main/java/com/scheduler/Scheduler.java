@@ -7,7 +7,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Base64;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
@@ -79,7 +78,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         PubsubMessage message = PubsubMessage.newBuilder().setData(bStr).build();
 
         Publisher pub = Publisher.newBuilder(ProjectTopicName.of(projectId, topic)).build();
-        pub.publish(message).get(10, TimeUnit.SECONDS);
+        pub.publish(message).get();
     }
 
     public void createMergeJobs(String prefix, int chunkCount) {

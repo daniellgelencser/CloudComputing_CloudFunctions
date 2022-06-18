@@ -1,6 +1,6 @@
 package com.sorter;
 
-import com.scheduler.event.PubSubMessage;
+import com.sorter.event.PubSubMessage;
 import com.google.cloud.functions.BackgroundFunction;
 import com.google.cloud.functions.Context;
 import java.util.Base64;
