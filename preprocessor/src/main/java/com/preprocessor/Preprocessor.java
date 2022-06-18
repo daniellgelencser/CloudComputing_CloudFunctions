@@ -4,22 +4,33 @@ import com.google.cloud.ReadChannel;
 import com.google.cloud.WriteChannel;
 import com.google.cloud.functions.BackgroundFunction;
 import com.google.cloud.functions.Context;
+import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.ProjectTopicName;
+import com.google.pubsub.v1.PubsubMessage;
 import com.preprocessor.event.GcsEvent;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
 public class Preprocessor implements BackgroundFunction<GcsEvent> {
   private static Storage storage = StorageOptions.getDefaultInstance().getService();
   private static final Logger logger = Logger.getLogger(Preprocessor.class.getName());
 
-  private String inputBucket, outputBucket, fileName;
+  public static final String outputBucket = System.getenv("OUTPUT_BUCKET");
+  public static final String projectId = System.getenv("GOOGLE_CLOUD_PROJECT");
+
+  private String inputBucket, fileName;
 
   @Override
   public void accept(GcsEvent event, Context context) {
@@ -32,10 +43,26 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     logger.info("Updated: " + event.getUpdated());
 
     inputBucket = event.getBucket();
-    outputBucket = System.getenv("OUTPUT_BUCKET").trim();
     fileName = event.getName();
 
     prepareChunks(100);
+    try {
+      publishStartScheduler();
+    } catch (IOException | InterruptedException | ExecutionException | TimeoutException e) {
+      logger.severe(e.getMessage());
+    }
+  }
+
+  public void publishStartScheduler() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    String topic = "start_scheduler";
+    logger.info("Publishing message to topic: " + topic);
+
+    String prefix = fileName.replace(".txt", "");
+    ByteString bStr = ByteString.copyFrom(prefix, StandardCharsets.UTF_8);
+    PubsubMessage message = PubsubMessage.newBuilder().setData(bStr).build();
+
+    Publisher pub = Publisher.newBuilder(ProjectTopicName.of(projectId, topic)).build();
+    pub.publish(message).get(10, TimeUnit.SECONDS);
   }
 
   private byte[] readFileChunk(ReadChannel reader, long start, long chunkSize) throws IOException {
@@ -93,116 +120,8 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
       } while (start < inputSize);
 
     } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
       logger.severe(e.getMessage());
     }
   }
 
-  // public void writeChunks()
-  // {
-  // int i = 0;
-  // for (byte[] chunk : content) {
-
-  // String chunkName = fileName.replace(".txt", "_chunk_" + i++ + ".txt");
-  // BlobInfo info = BlobInfo.newBuilder(outputBucket, chunkName).build();
-
-  // try (WriteChannel writer = storage.writer(info)) {
-
-  // writer.write(ByteBuffer.wrap(chunk, 0, chunk.length));
-
-  // } catch (IOException e) {
-  // // TODO Auto-generated catch block
-  // e.printStackTrace();
-  // }
-  // }
-  // }
-
-  // public void readFile(long blobSize)
-  // {
-  // Blob blob = storage.get(BlobId.of(inputBucket, fileName));
-  // if(!blob.exists()) {
-  // return;
-  // }
-
-  // long size = blob.getSize();
-  // content = new byte[(int) Math.ceil(size / blobSize)][(int)blobSize];
-
-  // long start = 0, end = 0;
-  // try (ReadChannel reader = blob.reader()) {
-
-  // do {
-
-  // end = start + blobSize;
-
-  // reader.seek(start);
-  // ByteBuffer bytes = ByteBuffer.allocate((int) (end - start));
-  // reader.read(bytes);
-  // bytes.flip();
-
-  // String text = "";
-  // while (bytes.hasRemaining()) {
-  // text += (char) bytes.get();
-  // }
-
-  // logger.info(text);
-
-  // start = end;
-
-  // } while (end < size);
-
-  // reader.close();
-
-  // } catch (IOException e) {
-  // // TODO Auto-generated catch block
-  // e.printStackTrace();
-  // }
-  // }
-
-  // public void testFile(BlobInfo info)
-  // {
-  // String bucketName = info.getBucket();
-  // String fileName = info.getName();
-
-  // Blob blob = storage.get(BlobId.of(bucketName, fileName));
-  // Path download = Paths.get("/tmp/", fileName);
-  // blob.downloadTo(download);
-
-  // File textFile = new File("/tmp/" + fileName);
-  // ArrayList<String> list = new ArrayList<String>();
-
-  // if(textFile.canRead()) {
-  // try {
-  // Scanner reader = new Scanner(textFile);
-
-  // while (reader.hasNextLine()) {
-  // String line = reader.nextLine();
-  // // logger.info(line);
-  // list.add(line);
-  // }
-
-  // reader.close();
-
-  // } catch (FileNotFoundException e) {
-  // // TODO Auto-generated catch block
-  // e.printStackTrace();
-  // }
-  // }
-
-  // Collections.sort(list);
-
-  // for (String str : list) {
-  // logger.info(str);
-  // }
-
-  // // Path upload = Paths.get("/tmp/upload/", more)
-
-  // try {
-  // Files.delete(download);
-  // } catch (IOException e) {
-  // // TODO Auto-generated catch block
-  // e.printStackTrace();
-  // }
-  // // Files.delete(upload);
-  // }
 }

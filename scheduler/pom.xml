@@ -42,7 +42,7 @@
       <artifactId>mysql-connector-java</artifactId>
       <version>8.0.29</version>
     </dependency>
-    
+
     <dependency>
       <groupId>com.google.cloud.sql</groupId>
       <artifactId>mysql-socket-factory-connector-j-8</artifactId>
@@ -53,6 +53,11 @@
       <groupId>com.zaxxer</groupId>
       <artifactId>HikariCP</artifactId>
       <version>5.0.1</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-pubsub</artifactId>
     </dependency>
   </dependencies>
 
