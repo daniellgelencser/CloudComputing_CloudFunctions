@@ -1,5 +1,6 @@
 package com.scheduler;
 
+import java.util.Base64;
 import java.util.logging.Logger;
 
 import com.google.api.gax.paging.Page;
@@ -25,7 +26,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
             return;
         }
 
-        String data = message.getData();
+        String data = new String(Base64.getDecoder().decode(message.getData()));
         
         inputBucket = System.getenv("INPUT_BUCKET");
 
