@@ -119,6 +119,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
 
       } while (start < inputSize);
 
+      reader.close();
     } catch (IOException e) {
       logger.severe(e.getMessage());
     }

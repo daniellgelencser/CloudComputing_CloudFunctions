@@ -67,13 +67,17 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         }
 
         createMergeJobs(prefix, count);
+        try {
+            publishStartSorter(prefix);
+        } catch (IOException | InterruptedException | ExecutionException | TimeoutException e) {
+            logger.severe(e.getMessage());
+        }
     }
 
-    public void publishStartSorter() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    public void publishStartSorter(String prefix) throws IOException, InterruptedException, ExecutionException, TimeoutException {
         String topic = "start_sorter";
         logger.info("Publishing message to topic: " + topic);
 
-        String prefix = "some message";
         ByteString bStr = ByteString.copyFrom(prefix, StandardCharsets.UTF_8);
         PubsubMessage message = PubsubMessage.newBuilder().setData(bStr).build();
 
@@ -103,7 +107,8 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         try {
             executeQuery(
                     "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `chunk_two`, `status`)"
-                            + "VALUES ('" + prefix + "', 'merge_r'" + round + ", '" + chunk1 + "', '" + chunk2 + "', 'pending')");
+                            + "VALUES ('" + prefix + "', 'merge_r'" + round + ", '" + chunk1 + "', '" + chunk2
+                            + "', 'pending')");
         } catch (SQLException e) {
             logger.severe(e.getMessage());
         }
