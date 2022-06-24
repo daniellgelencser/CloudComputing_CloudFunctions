@@ -118,12 +118,13 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     private static DataSource getMySqlConnectionPool() {
         HikariConfig config = new HikariConfig();
 
-        config.setJdbcUrl(String.format("jdbc:mysql:////%s", dbName));
+        config.setJdbcUrl(String.format("jdbc:mysql://%s", dbName));
         config.setUsername(dbUser);
         config.setPassword(dbPass);
         config.addDataSourceProperty("socketFactory", "com.google.cloud.sql.mysql.SocketFactory");
         config.addDataSourceProperty("cloudSqlInstance", dbConnection);
         config.addDataSourceProperty("ipTypes", "PUBLIC,PRIVATE");
+        config.addDataSourceProperty("databaseName", dbName);
         config.setMaximumPoolSize(1);
 
         return new HikariDataSource(config);
