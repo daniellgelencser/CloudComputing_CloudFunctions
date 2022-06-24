@@ -109,7 +109,9 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
 
     private ResultSet executeQuery(String query) throws SQLException {
         Connection connection = connectionPool.getConnection();
-        PreparedStatement statement = connection.prepareStatement(query);
+        PreparedStatement statement = connection.prepareStatement(String.format("use %s;",dbName));
+        statement.executeQuery();
+        statement = connection.prepareStatement(query);
         ResultSet results = statement.executeQuery();
         connection.close();
         return results;
