@@ -105,10 +105,11 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
 
     public void insertMergeJob(String prefix, String chunk1, String chunk2, int round) {
         try {
-            executeQuery(
-                    "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `chunk_two`, `status`)"
-                            + "VALUES ('" + prefix + "', 'merge_r" + round + "', '" + chunk1 + "', '" + chunk2
-                            + "', 'pending')");
+            String query = "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `chunk_two`, `status`)"
+                            + " VALUES ('" + prefix + "', 'merge_r" + round + "', '" + chunk1 + "', '" + chunk2
+                            + "', 'pending')";
+            logger.info("Insert Merge Job Query:"+query);
+            executeQuery(query);
         } catch (SQLException e) {
             logger.severe(e.getMessage());
         }
