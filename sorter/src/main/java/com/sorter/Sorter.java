@@ -60,10 +60,10 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     }
 
     private void getChunkName(String message) {
+        logger.info("Message is:" + message);
         String[] args = message.split(",");
         String prefix = args[0];
         chunkId = Integer.parseInt(args[1]);
-        logger.info("Message is:" + message);
         logger.info("Processing chunk:" + chunkId + " , with prefix:" + prefix);
         try {
             String query = "SELECT id, chunk_one FROM `job` "
