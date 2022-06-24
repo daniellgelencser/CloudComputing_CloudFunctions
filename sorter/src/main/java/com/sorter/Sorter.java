@@ -51,8 +51,12 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         String data = new String(Base64.getDecoder().decode(message.getData()));
         connectionPool = getMySqlConnectionPool();
 
-        getChunkName(data);
-        sortChunk();
+        if(data!=null){
+            getChunkName(data);
+        }
+        if(chunkName!=null){
+            sortChunk();
+        }
     }
 
     private void getChunkName(String message) {
@@ -62,7 +66,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         logger.info("Message is:" + message);
         logger.info("Processing chunk:" + chunkId + " , with prefix:" + prefix);
         try {
-            String query = "SELECT * FROM `job` "
+            String query = "SELECT id, chunk_one FROM `job` "
                     + "WHERE `prefix` LIKE '" + prefix + "' "
                     + "AND `type` LIKE 'quicksort' "
                     + "AND `chunk_one` LIKE '" + prefix + "/chunk_" + chunkId + ".txt' "
@@ -158,7 +162,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     }
 
     private void sortChunk() {
-
+        logger.info("Sorting chunk file : "+chunkName);
         StringBuilder contentBuilder = new StringBuilder(getFirstPart());
         contentBuilder.append(getSecondPart());
         String[] lines = contentBuilder.toString().split("\n");
