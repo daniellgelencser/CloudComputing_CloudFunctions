@@ -54,7 +54,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         if(data!=null || data.contains(",")){
             getChunkName(data);
         }
-        if(chunkName!=null){
+        if(chunkName!=null && nextChunk!=null){
             sortChunk();
         }
     }
@@ -72,13 +72,8 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
                     + "AND `chunk_one` LIKE '" + prefix + "/chunk_" + chunkId + ".txt' "
                     + "LIMIT 1;";
             logger.info(query);
-            ResultSet results = executeQuery(query);
-
-            int jobId = results.getInt("id");
-            if (results.wasNull()) {
-                // sorting is done nothing to do
-                return;
-            }
+            int jobId = executeQuery(query);
+            
 
             logger.info("Processing Job:" + jobId);
 
@@ -89,7 +84,6 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
 
             logger.info("Marked Job:" + jobId + " in_progress");
             if (success > 0) {
-                chunkName = results.getString("chunk_one");
                 nextChunk = prefix + "/chunk_" + chunkId + ".txt'";
                 logger.info("Sorting file:" + chunkName);
             }
@@ -107,12 +101,19 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         return result;
     }
 
-    private ResultSet executeQuery(String query) throws SQLException {
+    private int executeQuery(String query) throws SQLException {
         Connection connection = connectionPool.getConnection();
         PreparedStatement statement = connection.prepareStatement(query);
         ResultSet results = statement.executeQuery();
+        chunkName = results.getString("chunk_one");
+
+        int jobId = results.getInt("id");
         connection.close();
-        return results;
+        if (results.wasNull()) {
+            // sorting is done nothing to do
+            return -1;
+        }
+       return jobId;
     }
 
     private static DataSource getMySqlConnectionPool() {
