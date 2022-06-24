@@ -51,7 +51,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         String data = new String(Base64.getDecoder().decode(message.getData()));
         connectionPool = getMySqlConnectionPool();
 
-        if(data!=null){
+        if(data!=null || data.contains(",")){
             getChunkName(data);
         }
         if(chunkName!=null){
