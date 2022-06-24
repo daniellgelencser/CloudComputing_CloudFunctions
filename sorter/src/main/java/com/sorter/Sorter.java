@@ -59,15 +59,16 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         String[] args = message.split(",");
         String prefix = args[0];
         chunkId = Integer.parseInt(args[1]);
-        logger.info("Message is:"+message);
-        logger.info("Processing chunk:"+chunkId+" , with prefix:"+prefix);
+        logger.info("Message is:" + message);
+        logger.info("Processing chunk:" + chunkId + " , with prefix:" + prefix);
         try {
-            ResultSet results = executeQuery(
-                    "SELECT * FROM `job` "
-                            + "WHERE `prefix` LIKE '" + prefix + "' "
-                            + "AND `type` LIKE 'quicksort' "
-                            + "AND `chunk_one` LIKE '" + prefix + "/chunk_" + chunkId + ".txt' "
-                            + "LIMIT 1;");
+            String query = "SELECT * FROM `job` "
+                    + "WHERE `prefix` LIKE '" + prefix + "' "
+                    + "AND `type` LIKE 'quicksort' "
+                    + "AND `chunk_one` LIKE '" + prefix + "/chunk_" + chunkId + ".txt' "
+                    + "LIMIT 1;";
+            logger.info(query);
+            ResultSet results = executeQuery(query);
 
             int jobId = results.getInt("id");
             if (results.wasNull()) {
@@ -75,18 +76,18 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
                 return;
             }
 
-            logger.info("Processing Job:"+jobId);
+            logger.info("Processing Job:" + jobId);
 
             int success = executeUpdate(
                     "UPDATE `job` "
                             + "SET `status` = 'in_progress' "
-                            + "WHERE `id` = " + jobId+";");
+                            + "WHERE `id` = " + jobId + ";");
 
-            logger.info("Marked Job:"+jobId+" in_progress");
+            logger.info("Marked Job:" + jobId + " in_progress");
             if (success > 0) {
                 chunkName = results.getString("chunk_one");
                 nextChunk = prefix + "/chunk_" + chunkId + ".txt'";
-                logger.info("Sorting file:"+chunkName);
+                logger.info("Sorting file:" + chunkName);
             }
 
         } catch (SQLException e) {
