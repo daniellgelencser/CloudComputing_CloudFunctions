@@ -63,15 +63,15 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         for (Blob blob : blobs.iterateAll()) {
             logger.info(blob.getName());
             insertSortJob(prefix, blob.getName());
+            try {
+                publishStartSorter(prefix+","+count);
+            } catch (IOException | InterruptedException | ExecutionException | TimeoutException e) {
+                logger.severe(e.getMessage());
+            }
             count++;
         }
 
         createMergeJobs(prefix, count);
-        try {
-            publishStartSorter(prefix);
-        } catch (IOException | InterruptedException | ExecutionException | TimeoutException e) {
-            logger.severe(e.getMessage());
-        }
     }
 
     public void publishStartSorter(String prefix) throws IOException, InterruptedException, ExecutionException, TimeoutException {
@@ -92,7 +92,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
 
             x *= 2;
             for (int i = 0; i < chunkCount; i += x) {
-                int y = i + x / 2;
+                int y = i + x / 2 - 1;
                 if (y > chunkCount) {
                     continue;
                 }

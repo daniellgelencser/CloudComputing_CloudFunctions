@@ -1,30 +1,29 @@
 package com.sorter;
 
-import com.sorter.event.PubSubMessage;
-import com.google.cloud.functions.BackgroundFunction;
-import com.google.cloud.functions.Context;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
-import com.google.cloud.ReadChannel;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.BlobId;
-
-
-
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Connection;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Map;
 import java.util.logging.Logger;
 
+import javax.sql.DataSource;
+
+import com.google.cloud.ReadChannel;
+import com.google.cloud.WriteChannel;
+import com.google.cloud.functions.BackgroundFunction;
+import com.google.cloud.functions.Context;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+import com.sorter.event.PubSubMessage;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-
-import javax.sql.DataSource;
 
 public class Sorter implements BackgroundFunction<PubSubMessage> {
     private static Storage storage = StorageOptions.getDefaultInstance().getService();
@@ -36,15 +35,19 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     private static final String dbPass = System.getenv("DB_PASS");
     private static final String dbName = System.getenv("DB_NAME");
     private static final String projectId = System.getenv("GOOGLE_CLOUD_PROJECT");
+    public static final String outputBucket = System.getenv("OUTPUT_BUCKET");
 
     private DataSource connectionPool;
     private String chunkName, nextChunk;
+    private int chunkId;
 
     @Override
     public void accept(PubSubMessage message, Context context) {
         if (message == null || message.getData() == null) {
             logger.warning("Pub/Sub message empty");
             return;
+        } else {
+            logger.info(message.toString());
         }
 
         String data = new String(Base64.getDecoder().decode(message.getData()));
@@ -54,13 +57,16 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         sortChunk();
     }
 
-    private void getChunkName(String prefix) {
+    private void getChunkName(String message) {
+        String[] args = message.split(",");
+        String prefix = args[0];
+        chunkId = Integer.parseInt(args[1]);
         try {
             ResultSet results = executeQuery(
-                    "SELECT * FROM `job`"
-                            + "WHERE `prefix` LIKE '" + prefix + "' "
-                            + "AND `type` LIKE 'quicksort' "
-                            + "AND `status` LIKE `pending`"
+                    "SELECT * FROM `job` "
+                            + "WHERE `prefix` = '" + prefix + "' "
+                            + "AND `type` = 'quicksort' "
+                            + "AND `chunk_one` = '" + prefix + "/chunk_" + chunkId + ".txt' "
                             + "LIMIT 1");
 
             int jobId = results.getInt("id");
@@ -70,13 +76,13 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
             }
 
             int success = executeUpdate(
-                    "UPDATE `job`"
-                            + "SET `status` = 'in_progress'"
+                    "UPDATE `job` "
+                            + "SET `status` = 'in_progress' "
                             + "WHERE `id` = " + jobId);
 
             if (success > 0) {
                 chunkName = results.getString("chunk_one");
-                nextChunk = results.getString("chunk_two");
+                nextChunk = prefix + "/chunk_" + chunkId + ".txt'";
             }
 
         } catch (SQLException e) {
@@ -113,25 +119,66 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         return new HikariDataSource(config);
     }
 
-    private void sortChunk() {
-
+    private String getFirstPart() {
         Blob inputBlob = storage.get(BlobId.of(inputBucket, chunkName));
         if (!inputBlob.exists()) {
-            return;
+            return "";
         }
 
-        // TODO: discard incomplete first line
+        // discard incomplete first line
         byte[] byteContent = storage.readAllBytes(inputBucket, chunkName);
-        String content = new String(byteContent);
+        String str = new String(byteContent);
+        if (chunkId > 0) {
+            return str.substring(str.indexOf('\n', 0) + 1);
+        } else {
+            return str;
+        }
 
-        // TODO: get first line from next blob
-        // try ()
+    }
 
-        String[] lines = content.split("\n");
+    private String getSecondPart() {
+        Blob inputBlob = storage.get(BlobId.of(inputBucket, nextChunk));
+        if (!inputBlob.exists()) {
+            return "";
+        }
+
+        byte[] byteContent = storage.readAllBytes(inputBucket, nextChunk);
+        String str = new String(byteContent);
+        int endOffset = str.indexOf('\n', 0);
+        if (endOffset != -1) {
+            return str.substring(0, endOffset);
+        } else {
+            return str;
+        }
+    }
+
+    private void sortChunk() {
+
+        StringBuilder contentBuilder = new StringBuilder(getFirstPart());
+        contentBuilder.append(getSecondPart());
+        String[] lines = contentBuilder.toString().split("\n");
         Arrays.sort(lines);
 
-        content = String.join("\n", lines);
+        String content = String.join("\n", lines);
+        try {
+            writeChunk(content.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+            logger.warning(e.getMessage());
+        }
+    }
 
+    private void writeChunk(byte[] chunk) throws IOException {
+
+        logger.info("Uploading chunk: " + chunkName);
+        BlobId blobId = BlobId.of(outputBucket, chunkName);
+        BlobInfo outputInfo = BlobInfo.newBuilder(blobId).build();
+
+        WriteChannel writer = storage.writer(outputInfo);
+        int writtenBytes = writer.write(ByteBuffer.wrap(chunk, 0, chunk.length));
+        logger.info("Created file: " + chunkName + " with length of " + writtenBytes + "bytes");
+
+        writer.close();
     }
 
     private void readChunk(ReadChannel reader, long size) throws IOException {
