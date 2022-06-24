@@ -67,7 +67,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
                             + "WHERE `prefix` LIKE '" + prefix + "' "
                             + "AND `type` LIKE 'quicksort' "
                             + "AND `chunk_one` LIKE '" + prefix + "/chunk_" + chunkId + ".txt' "
-                            + "LIMIT 1");
+                            + "LIMIT 1;");
 
             int jobId = results.getInt("id");
             if (results.wasNull()) {
@@ -80,7 +80,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
             int success = executeUpdate(
                     "UPDATE `job` "
                             + "SET `status` = 'in_progress' "
-                            + "WHERE `id` = " + jobId);
+                            + "WHERE `id` = " + jobId+";");
 
             logger.info("Marked Job:"+jobId+" in_progress");
             if (success > 0) {
