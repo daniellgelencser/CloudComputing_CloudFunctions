@@ -109,9 +109,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
 
     private ResultSet executeQuery(String query) throws SQLException {
         Connection connection = connectionPool.getConnection();
-        PreparedStatement statement = connection.prepareStatement(String.format("use %s;",dbName));
-        statement.executeQuery();
-        statement = connection.prepareStatement(query);
+        PreparedStatement statement = connection.prepareStatement(query);
         ResultSet results = statement.executeQuery();
         connection.close();
         return results;
@@ -120,14 +118,14 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     private static DataSource getMySqlConnectionPool() {
         HikariConfig config = new HikariConfig();
 
-        config.setJdbcUrl(String.format("jdbc:mysql://%s", dbName));
+        config.setJdbcUrl(String.format("jdbc:mysql:///%s", dbName));
         config.setUsername(dbUser);
         config.setPassword(dbPass);
         config.addDataSourceProperty("socketFactory", "com.google.cloud.sql.mysql.SocketFactory");
         config.addDataSourceProperty("cloudSqlInstance", dbConnection);
         config.addDataSourceProperty("ipTypes", "PUBLIC,PRIVATE");
         config.addDataSourceProperty("databaseName", dbName);
-        config.setMaximumPoolSize(1);
+        config.setMaximumPoolSize(5);
 
         return new HikariDataSource(config);
     }
