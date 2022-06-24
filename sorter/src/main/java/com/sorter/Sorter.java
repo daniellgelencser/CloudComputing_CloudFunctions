@@ -43,13 +43,13 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
 
     @Override
     public void accept(PubSubMessage message, Context context) {
+        connectionPool = getMySqlConnectionPool();
         if (message == null || message.getData() == null) {
             logger.warning("Pub/Sub message empty");
             return;
         }
 
         String data = new String(Base64.getDecoder().decode(message.getData()));
-        connectionPool = getMySqlConnectionPool();
 
         if(data!=null || data.contains(",")){
             getChunkName(data);
@@ -118,7 +118,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     private static DataSource getMySqlConnectionPool() {
         HikariConfig config = new HikariConfig();
 
-        config.setJdbcUrl(String.format("jdbc:mysql://%s", dbName));
+        config.setJdbcUrl(String.format("jdbc:mysql:////%s", dbName));
         config.setUsername(dbUser);
         config.setPassword(dbPass);
         config.addDataSourceProperty("socketFactory", "com.google.cloud.sql.mysql.SocketFactory");
