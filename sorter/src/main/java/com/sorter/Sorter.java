@@ -46,8 +46,6 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         if (message == null || message.getData() == null) {
             logger.warning("Pub/Sub message empty");
             return;
-        } else {
-            logger.info(message.toString());
         }
 
         String data = new String(Base64.getDecoder().decode(message.getData()));
@@ -61,6 +59,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         String[] args = message.split(",");
         String prefix = args[0];
         chunkId = Integer.parseInt(args[1]);
+        logger.info("Processing chunk:"+chunkId+" , with prefix:"+prefix);
         try {
             ResultSet results = executeQuery(
                     "SELECT * FROM `job` "
