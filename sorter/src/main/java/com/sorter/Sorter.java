@@ -51,10 +51,10 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
 
         String data = new String(Base64.getDecoder().decode(message.getData()));
 
-        if(data!=null || data.contains(",")){
+        if (data != null || data.contains(",")) {
             getChunkName(data);
         }
-        if(chunkName!=null && nextChunk!=null){
+        if (chunkName != null && nextChunk != null) {
             sortChunk();
         }
     }
@@ -73,7 +73,6 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
                     + "LIMIT 1;";
             logger.info(query);
             int jobId = executeQuery(query);
-            
 
             logger.info("Processing Job:" + jobId);
 
@@ -102,18 +101,29 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     }
 
     private int executeQuery(String query) throws SQLException {
-        Connection connection = connectionPool.getConnection();
-        PreparedStatement statement = connection.prepareStatement(query);
-        ResultSet results = statement.executeQuery();
-        chunkName = results.getString("chunk_one");
+        int jobId = -1;
+        Connection connection = null;
+        try {
+            connection = connectionPool.getConnection();
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet results = statement.executeQuery();
 
-        int jobId = results.getInt("id");
-        connection.close();
-        if (results.wasNull()) {
-            // sorting is done nothing to do
-            return -1;
+            while (results.next()) {
+                jobId = results.getInt("id");
+                chunkName = results.getString("chunk_one");
+            }
+            // if (results.wasNull()) {
+            // // sorting is done nothing to do
+            // return -1;
+            // }
+            connection.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            logger.warning(e.toString());
+            throw e;
         }
-       return jobId;
+
+        return jobId;
     }
 
     private static DataSource getMySqlConnectionPool() {
@@ -165,7 +175,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     }
 
     private void sortChunk() {
-        logger.info("Sorting chunk file : "+chunkName);
+        logger.info("Sorting chunk file : " + chunkName);
         StringBuilder contentBuilder = new StringBuilder(getFirstPart());
         contentBuilder.append(getSecondPart());
         String[] lines = contentBuilder.toString().split("\n");
