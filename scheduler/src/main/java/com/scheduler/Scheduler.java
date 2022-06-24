@@ -107,7 +107,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         try {
             executeQuery(
                     "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `chunk_two`, `status`)"
-                            + "VALUES ('" + prefix + "', 'merge_r'" + round + ", '" + chunk1 + "', '" + chunk2
+                            + "VALUES ('" + prefix + "', 'merge_r" + round + "', '" + chunk1 + "', '" + chunk2
                             + "', 'pending')");
         } catch (SQLException e) {
             logger.severe(e.getMessage());
