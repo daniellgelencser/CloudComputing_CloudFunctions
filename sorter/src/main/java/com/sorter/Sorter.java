@@ -124,6 +124,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         config.addDataSourceProperty("socketFactory", "com.google.cloud.sql.mysql.SocketFactory");
         config.addDataSourceProperty("cloudSqlInstance", dbConnection);
         config.addDataSourceProperty("ipTypes", "PUBLIC,PRIVATE");
+        config.setMaximumPoolSize(1);
 
         return new HikariDataSource(config);
     }
