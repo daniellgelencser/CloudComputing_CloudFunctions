@@ -86,22 +86,42 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
     }
 
     public void createMergeJobs(String prefix, int chunkCount) {
-        int x = 1;
         int round = 0;
         do {
-
-            x *= 2;
-            for (int i = 0; i < chunkCount; i += x) {
-                int y = i + x / 2 ;
-                if (y > chunkCount) {
-                    continue;
+            for (int i = 0; i < chunkCount; i += 2) {
+                logger.info("Round:"+round+" , left:"+i+" , right:"+(i+1)+ " , output:"+(i/2));
+                if(chunkCount==(i+1)){
+                    insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", "", round);
+                } else {
+                    insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", prefix + "/chunk_" + (i+1) + ".txt", round);
                 }
-                insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", prefix + "/chunk_" + y + ".txt", round);
             }
             round++;
-
-        } while (x < chunkCount);
+            if(chunkCount%2==0) {
+                chunkCount/=2;
+            } else {
+                chunkCount=(int)Math.ceil((double)(chunkCount)/2.0);
+            }
+        }while(chunkCount>1) ;
     }
+
+    // public void createMergeJobs(String prefix, int chunkCount) {
+    //     int x = 1;
+    //     int round = 0;
+    //     do {
+
+    //         x *= 2;
+    //         for (int i = 0; i < chunkCount; i += x) {
+    //             int y = i + x / 2 ;
+    //             if (y > chunkCount) {
+    //                 continue;
+    //             }
+    //             insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", prefix + "/chunk_" + y + ".txt", round);
+    //         }
+    //         round++;
+
+    //     } while (x < chunkCount);
+    // }
 
     public void insertMergeJob(String prefix, String chunk1, String chunk2, int round) {
         try {
