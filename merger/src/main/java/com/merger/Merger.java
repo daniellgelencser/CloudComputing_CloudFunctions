@@ -90,7 +90,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
         String filename = firstSplit[1];
         String[] fields = filename.split("_");
         round = Integer.parseInt(fields[0].substring(1));
-        int chunkId = Integer.parseInt(fields[2].split(".")[0]);
+        int chunkId = Integer.parseInt(fields[2].substring(0, fields[2].indexOf(".")));
         if (chunkId % 2 == 0) {
             leftId = chunkId;
             rightId = leftId + 1;
