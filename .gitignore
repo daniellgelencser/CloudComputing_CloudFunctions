@@ -1,4 +1,5 @@
 preprocessor/target
 scheduler/target
 sorter/target
+merger/target
 test.txt

@@ -96,7 +96,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
                 if (y > chunkCount) {
                     continue;
                 }
-                insertMergeJob(prefix, prefix + "/chunk_" + i + ".txt", prefix + "/chunk_" + y + ".txt", round);
+                insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", prefix + "/chunk_" + y + ".txt", round);
             }
             round++;
 

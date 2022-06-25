@@ -210,14 +210,14 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     }
 
     private void writeChunk(byte[] chunk) throws IOException {
-
-        logger.info("Uploading chunk: " + chunkName);
-        BlobId blobId = BlobId.of(outputBucket, chunkName);
+        String newFilename = prefix+"/r0_chunk_"+chunkId+".txt";
+        logger.info("Uploading chunk: " + newFilename);
+        BlobId blobId = BlobId.of(outputBucket, newFilename);
         BlobInfo outputInfo = BlobInfo.newBuilder(blobId).build();
 
         WriteChannel writer = storage.writer(outputInfo);
         int writtenBytes = writer.write(ByteBuffer.wrap(chunk, 0, chunk.length));
-        logger.info("Created file: " + chunkName + " with length of " + writtenBytes + "bytes");
+        logger.info("Created file: " + newFilename + " with length of " + writtenBytes + "bytes");
 
         writer.close();
     }
