@@ -12,7 +12,6 @@ import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
-import com.google.cloud.ReadChannel;
 import com.google.cloud.WriteChannel;
 import com.google.cloud.functions.BackgroundFunction;
 import com.google.cloud.functions.Context;
@@ -39,10 +38,12 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
 
     private DataSource connectionPool;
     private String chunkName, nextChunk;
+    private String prefix;
     private int chunkId;
+    private int jobId = -1;
 
     @Override
-    public void accept(PubSubMessage message, Context context) {
+    public void accept(PubSubMessage message, Context context) throws SQLException {
         connectionPool = getMySqlConnectionPool();
         if (message == null || message.getData() == null) {
             logger.warning("Pub/Sub message empty");
@@ -52,17 +53,28 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         String data = new String(Base64.getDecoder().decode(message.getData()));
 
         if (data != null || data.contains(",")) {
-            getChunkName(data);
+            prepareJob(data);
+            markJobInProgress();
         }
         if (chunkName != null && nextChunk != null) {
             sortChunk();
+            markChunkSorted();
         }
     }
 
-    private void getChunkName(String message) {
+    private void markChunkSorted() throws SQLException {
+        int success = executeUpdate(
+                "UPDATE `job` "
+                        + "SET `status` = 'done' "
+                        + "WHERE `id` = " + jobId + ";");
+        if (success > 0)
+            logger.info("Marked Job:" + jobId + " done!");
+    }
+
+    private void prepareJob(String message) {
         logger.info("Message is:" + message);
         String[] args = message.split(",");
-        String prefix = args[0];
+        prefix = args[0];
         chunkId = Integer.parseInt(args[1]);
         logger.info("Processing chunk:" + chunkId + " , with prefix:" + prefix);
         try {
@@ -72,23 +84,24 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
                     + "AND `chunk_one` LIKE '" + prefix + "/chunk_" + chunkId + ".txt' "
                     + "LIMIT 1;";
             logger.info(query);
-            int jobId = executeQuery(query);
+            jobId = executeQuery(query);
 
             logger.info("Processing Job:" + jobId);
-
-            int success = executeUpdate(
-                    "UPDATE `job` "
-                            + "SET `status` = 'in_progress' "
-                            + "WHERE `id` = " + jobId + ";");
-
-            logger.info("Marked Job:" + jobId + " in_progress");
-            if (success > 0) {
-                nextChunk = prefix + "/chunk_" + chunkId + ".txt'";
-                logger.info("Sorting file:" + chunkName);
-            }
-
         } catch (SQLException e) {
             logger.severe(e.getMessage());
+        }
+    }
+
+    private void markJobInProgress() throws SQLException {
+        int success = executeUpdate(
+                "UPDATE `job` "
+                        + "SET `status` = 'in_progress' "
+                        + "WHERE `id` = " + jobId + ";");
+
+        logger.info("Marked Job:" + jobId + " in_progress");
+        if (success > 0) {
+            nextChunk = prefix + "/chunk_" + chunkId + ".txt'";
+            logger.info("Sorting file:" + chunkName);
         }
     }
 
@@ -101,7 +114,6 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     }
 
     private int executeQuery(String query) throws SQLException {
-        int jobId = -1;
         Connection connection = null;
         try {
             connection = connectionPool.getConnection();
@@ -161,7 +173,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     private String getSecondPart() {
         logger.info("Accessing next chunk : " + nextChunk);
         Blob inputBlob = storage.get(BlobId.of(inputBucket, nextChunk));
-        if (inputBlob==null || !inputBlob.exists()) {
+        if (inputBlob == null || !inputBlob.exists()) {
             return "";
         }
 
@@ -202,9 +214,5 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         logger.info("Created file: " + chunkName + " with length of " + writtenBytes + "bytes");
 
         writer.close();
-    }
-
-    private void readChunk(ReadChannel reader, long size) throws IOException {
-
     }
 }

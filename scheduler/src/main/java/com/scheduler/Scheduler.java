@@ -92,7 +92,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
 
             x *= 2;
             for (int i = 0; i < chunkCount; i += x) {
-                int y = i + x / 2 - 1;
+                int y = i + x / 2 ;
                 if (y > chunkCount) {
                     continue;
                 }

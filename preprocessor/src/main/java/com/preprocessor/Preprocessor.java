@@ -18,6 +18,7 @@ import com.preprocessor.event.GcsEvent;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -45,7 +46,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     inputBucket = event.getBucket();
     fileName = event.getName();
 
-    prepareChunks(10000);
+    prepareChunks(1024);
     try {
       publishStartScheduler();
     } catch (IOException | InterruptedException | ExecutionException | TimeoutException e) {
@@ -77,8 +78,11 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     while (bytes.hasRemaining()) {
       chunk[i++] = bytes.get();
     }
-
-    return chunk;
+    if(i<chunkSize){
+      return Arrays.copyOfRange(chunk, 0, i);
+    } else {
+      return chunk;
+    }
   }
 
   private void writeChunk(byte[] chunk, int index) throws IOException {
@@ -114,7 +118,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
         byte[] chunk = readFileChunk(reader, start, chunkSize);
         writeChunk(chunk, index++);
 
-        logger.info(new String(chunk));
+        // logger.info(new String(chunk));
         start += chunkSize;
 
       } while (start < inputSize);
