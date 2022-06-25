@@ -45,7 +45,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     inputBucket = event.getBucket();
     fileName = event.getName();
 
-    prepareChunks(100);
+    prepareChunks(10000);
     try {
       publishStartScheduler();
     } catch (IOException | InterruptedException | ExecutionException | TimeoutException e) {
