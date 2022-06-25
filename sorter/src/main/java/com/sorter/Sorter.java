@@ -163,7 +163,12 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         byte[] byteContent = storage.readAllBytes(inputBucket, chunkName);
         String str = new String(byteContent);
         if (chunkId > 0) {
-            return str.substring(str.indexOf('\n', 0) + 1);
+            int splitIndex = str.indexOf('\n') + 1;
+            if(splitIndex > 0){
+                return str.substring(splitIndex);
+            } else {
+                return "";
+            }
         } else {
             return str;
         }
