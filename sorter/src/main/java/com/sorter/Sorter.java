@@ -179,6 +179,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         logger.info("Accessing next chunk : " + nextChunk);
         Blob inputBlob = storage.get(BlobId.of(inputBucket, nextChunk));
         if (inputBlob == null || !inputBlob.exists()) {
+            logger.info("Not Processing next Chunk:"+nextChunk);
             return "";
         }
 
