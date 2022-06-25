@@ -184,7 +184,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
 
         byte[] byteContent = storage.readAllBytes(inputBucket, nextChunk);
         String str = new String(byteContent);
-        int endOffset = str.indexOf('\n', 0);
+        int endOffset = str.indexOf('\n');
         if (endOffset != -1) {
             return str.substring(0, endOffset);
         } else {
@@ -199,7 +199,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         String[] lines = contentBuilder.toString().split("\n");
         Arrays.sort(lines);
 
-        String content = String.join("\n", lines);
+        String content = String.join("\n", lines) + '\n';
         try {
             writeChunk(content.getBytes());
         } catch (IOException e) {
