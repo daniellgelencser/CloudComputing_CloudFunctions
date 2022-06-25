@@ -100,7 +100,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
 
         logger.info("Marked Job:" + jobId + " in_progress");
         if (success > 0) {
-            nextChunk = prefix + "/chunk_" + chunkId + ".txt'";
+            nextChunk = prefix + "/chunk_" + (chunkId +1) + ".txt'";
             logger.info("Sorting file:" + chunkName);
         }
     }
