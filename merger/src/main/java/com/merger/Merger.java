@@ -87,7 +87,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
         fillList(rightList, rightBr);
 
         while (!leftList.isEmpty() && !rightList.isEmpty()) {
-            if (leftList.get(leftList.size() - 1).compareTo(rightList.get(rightList.size() - 1)) > 0) {
+            if (leftList.get(leftList.size() - 1).compareTo(rightList.get(rightList.size() - 1)) >= 0) {
                 // last item in left is bigger, right will empty out first
                 int leftIndex = 0;
                 String leftLine = leftList.get(leftIndex);
@@ -101,6 +101,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
                         leftIndex++;
                         leftLine = leftList.get(leftIndex);
                     } while (leftLine.compareTo(rightLine) < 0);
+                    outList.add(rightLine);
                 }
                 rightList.clear();
                 leftList.subList(0, leftIndex).clear();
@@ -120,6 +121,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
                         rightIndex++;
                         rightLine = rightList.get(rightIndex);
                     } while (rightLine.compareTo(leftLine) < 0);
+                    outList.add(leftLine);
                 }
                 leftList.clear();
                 rightList.subList(0, rightIndex).clear();
