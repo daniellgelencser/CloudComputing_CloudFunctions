@@ -2,4 +2,5 @@ preprocessor/target
 scheduler/target
 sorter/target
 merger/target
+merger/.vscode
 test.txt
