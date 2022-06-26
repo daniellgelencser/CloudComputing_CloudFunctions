@@ -3,4 +3,6 @@ scheduler/target
 sorter/target
 merger/target
 merger/.vscode
+palindromer/target
+palindromer/.vscode
 test.txt
