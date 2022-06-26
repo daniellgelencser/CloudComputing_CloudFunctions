@@ -103,12 +103,13 @@ public class Palindromer implements BackgroundFunction<GCSEvent> {
     }
 
     private void updateCounts() throws SQLException {
-        //
-        int success = executeUpdate(
-                "UPDATE `job` "
-                        + "SET `numPals` = " + count + " , "
-                        + "    `pal` = " + (lengthLongest < 100 ? longestPal : longestPal.substring(0, 100)) + " "
-                        + "WHERE `id` = " + jobId + ";");
+        String longestString = (lengthLongest < 100 ? longestPal : longestPal.substring(0, 100));
+        String query = "UPDATE `job` "
+                + "SET `numPals` = " + count + " , "
+                + "`pal` = '" + longestString + "' "
+                + "WHERE `id` = " + jobId + ";";
+        logger.info("Update Count query:" + query);
+        int success = executeUpdate(query);
 
         logger.info("Finishing Job:" + jobId);
         if (success > 0) {
