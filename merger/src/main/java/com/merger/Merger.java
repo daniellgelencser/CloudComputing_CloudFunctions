@@ -108,7 +108,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
                 flushList(outList); // write to output file
                 fillList(rightList, rightBr); // refill empty list
             } else {
-                // Duplicate of above inverse
+                // Duplicate of above inverse, may use reference based method call to refactor
                 int rightIndex = 0;
                 String rightLine = rightList.get(rightIndex);
                 for (String leftLine : leftList) {
@@ -128,6 +128,12 @@ public class Merger implements BackgroundFunction<GCSEvent> {
                 fillList(leftList, leftBr); // refill empty list
             }
         }
+
+        if(leftList.isEmpty()){
+            flushList(rightList);
+        } else if(rightList.isEmpty()){
+            flushList(leftList);
+        }
         writer.close();
     }
 
@@ -137,7 +143,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
         int writtenBytes = writer.write(ByteBuffer.wrap(outBytes, 0, outBytes.length)) + 1;
         writer.write(ByteBuffer.wrap(lineFeed, 0, lineFeed.length));
         logger.info("Flushing to file: " + outFilename + " with length of " + writtenBytes + "bytes");
-
+        list.clear();
     }
 
     private void fillList(List<String> list, BufferedReader br) throws IOException {
@@ -242,10 +248,6 @@ public class Merger implements BackgroundFunction<GCSEvent> {
                 jobId = results.getInt("id");
                 rightFilename = results.getString("chunk_two");
             }
-            // if (results.wasNull()) {
-            // // sorting is done nothing to do
-            // return -1;
-            // }
             connection.close();
         } catch (SQLException e) {
             e.printStackTrace();
