@@ -100,7 +100,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
 
         logger.info("Marked Job:" + jobId + " in_progress");
         if (success > 0) {
-            nextChunk = prefix + "/chunk_" + (chunkId +1) + ".txt";
+            nextChunk = prefix + "/chunk_" + (chunkId + 1) + ".txt";
             logger.info("Sorting file:" + chunkName);
         }
     }
@@ -164,7 +164,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         String str = new String(byteContent);
         if (chunkId > 0) {
             int splitIndex = str.indexOf('\n') + 1;
-            if(splitIndex > 0){
+            if (splitIndex > 0) {
                 return str.substring(splitIndex);
             } else {
                 return "";
@@ -179,7 +179,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         logger.info("Accessing next chunk : " + nextChunk);
         Blob inputBlob = storage.get(BlobId.of(inputBucket, nextChunk));
         if (inputBlob == null || !inputBlob.exists()) {
-            logger.info("Not Processing next Chunk:"+nextChunk);
+            logger.info("Not Processing next Chunk:" + nextChunk);
             return "";
         }
 
@@ -200,7 +200,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         String[] lines = contentBuilder.toString().split("\n");
         Arrays.sort(lines);
 
-        String content = String.join("\n", lines) ;
+        String content = String.join("\n", lines) + "\n";
         try {
             writeChunk(content.getBytes());
         } catch (IOException e) {
@@ -210,7 +210,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
     }
 
     private void writeChunk(byte[] chunk) throws IOException {
-        String newFilename = prefix+"/r0_chunk_"+chunkId+".txt";
+        String newFilename = prefix + "/r0_chunk_" + chunkId + ".txt";
         logger.info("Uploading chunk: " + newFilename);
         BlobId blobId = BlobId.of(outputBucket, newFilename);
         BlobInfo outputInfo = BlobInfo.newBuilder(blobId).build();
