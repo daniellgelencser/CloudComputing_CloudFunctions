@@ -9,23 +9,21 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
-import com.google.cloud.functions.BackgroundFunction;
-import com.google.cloud.functions.Context;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
-import com.merger.Merger.GCSEvent;
 import com.google.cloud.ReadChannel;
 import com.google.cloud.WriteChannel;
+import com.google.cloud.functions.BackgroundFunction;
+import com.google.cloud.functions.Context;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+import com.merger.Merger.GCSEvent;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -82,6 +80,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
         logger.info("Merging into file: " + outFilename);
         BlobId blobId = BlobId.of(inputBucket, outFilename);
         outputInfo = BlobInfo.newBuilder(blobId).build();
+        writer = storage.writer(outputInfo);
 
         // Fill lists from files
         fillList(leftList, leftBr);
@@ -129,9 +128,9 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             }
         }
 
-        if(leftList.isEmpty()){
+        if (leftList.isEmpty()) {
             flushList(rightList);
-        } else if(rightList.isEmpty()){
+        } else if (rightList.isEmpty()) {
             flushList(leftList);
         }
         writer.close();
@@ -139,7 +138,6 @@ public class Merger implements BackgroundFunction<GCSEvent> {
 
     private void flushList(List<String> list) throws IOException {
         byte[] outBytes = (String.join("\n", list)).getBytes();
-        writer = storage.writer(outputInfo);
         int writtenBytes = writer.write(ByteBuffer.wrap(outBytes, 0, outBytes.length)) + 1;
         writer.write(ByteBuffer.wrap(lineFeed, 0, lineFeed.length));
         logger.info("Flushing to file: " + outFilename + " with length of " + writtenBytes + "bytes");
