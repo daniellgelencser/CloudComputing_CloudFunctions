@@ -200,7 +200,7 @@ public class Sorter implements BackgroundFunction<PubSubMessage> {
         String[] lines = contentBuilder.toString().split("\n");
         Arrays.sort(lines);
 
-        String content = String.join("\n", lines) + "\n";
+        String content = String.join("\n", lines);// + "\n";
         try {
             writeChunk(content.getBytes());
         } catch (IOException e) {
