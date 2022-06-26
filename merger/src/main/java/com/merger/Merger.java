@@ -130,10 +130,13 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             }
         }
 
-        if (leftList.isEmpty()) {
-            flushList(rightList);
-        } else if (rightList.isEmpty()) {
+        while (!leftList.isEmpty()) {
             flushList(leftList);
+            fillList(leftList, leftBr);
+        }
+        while (!rightList.isEmpty()) {
+            flushList(rightList);
+            fillList(rightList, rightBr);
         }
         writer.close();
     }
