@@ -31,6 +31,8 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
   public static final String outputBucket = System.getenv("OUTPUT_BUCKET");
   public static final String projectId = System.getenv("GOOGLE_CLOUD_PROJECT");
 
+  private static final int chunkSize = 1024 * 1024;
+
   private String inputBucket, fileName;
 
   @Override
@@ -46,7 +48,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     inputBucket = event.getBucket();
     fileName = event.getName();
 
-    prepareChunks(1024);
+    prepareChunks();
     try {
       publishStartScheduler();
     } catch (IOException | InterruptedException | ExecutionException | TimeoutException e) {
@@ -78,7 +80,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     while (bytes.hasRemaining()) {
       chunk[i++] = bytes.get();
     }
-    if(i<chunkSize){
+    if (i < chunkSize) {
       return Arrays.copyOfRange(chunk, 0, i);
     } else {
       return chunk;
@@ -100,7 +102,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
     writer.close();
   }
 
-  private void prepareChunks(long chunkSize) {
+  private void prepareChunks() {
 
     Blob inputBlob = storage.get(BlobId.of(inputBucket, fileName));
     if (!inputBlob.exists()) {
