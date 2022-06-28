@@ -68,7 +68,35 @@ public class Merger implements BackgroundFunction<GCSEvent> {
         markJobDone();
     }
 
-    private void mergeFiles() throws IOException {
+    private BlobId getOutBlobId() throws SQLException {
+        Connection connection = null;
+        String query = "select count(*) as count from job where prefix=? and type=?;";
+        boolean isLastMerge = false;
+        try {
+            connection = connectionPool.getConnection();
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setString(1, prefix);
+            statement.setString(2, "merge_r" + round);
+            ResultSet results = statement.executeQuery();
+
+            while (results.next()) {
+                isLastMerge = results.getInt("count") == 1;
+            }
+            connection.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            logger.warning(e.toString());
+            throw e;
+        }
+
+        if (isLastMerge) {
+            return BlobId.of(outputBucket, prefix + ".txt");
+        } else {
+            return BlobId.of(inputBucket, outFilename);
+        }
+    }
+
+    private void mergeFiles() throws IOException, SQLException {
         StorageOptions options = StorageOptions.newBuilder().setProjectId(projectId).build();
         Storage storage = options.getService();
         Blob leftBlob = storage.get(inputBucket, leftFileName);
@@ -78,7 +106,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
         leftBr = new BufferedReader(Channels.newReader(leftReadChannel, "UTF-8"));
         rightBr = new BufferedReader(Channels.newReader(rightReadChannel, "UTF-8"));
         logger.info("Merging into file: " + outFilename);
-        BlobId blobId = BlobId.of(inputBucket, outFilename);
+        BlobId blobId = getOutBlobId();
         outputInfo = BlobInfo.newBuilder(blobId).build();
         writer = storage.writer(outputInfo);
 
