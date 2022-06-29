@@ -21,7 +21,6 @@ import com.google.cloud.functions.Context;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.CopyWriter;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.merger.Merger.GCSEvent;
@@ -52,14 +51,13 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             outList = new ArrayList<String>();
     private BlobInfo outputInfo;
     private WriteChannel writer;
-    private boolean isMoveJob = false;
 
     @Override
     public void accept(GCSEvent event, Context context) throws SQLException, IOException {
         logger.info("Processing file: " + event.name);
 
         prepareFields(event.name); // Get necessary fields and check if pair file is ready
-        if (!ready && chunkId % 2 != 0) {
+        if (!ready) {
             logger.info("When pair is ready, processing will start");
             return;
         }
@@ -195,7 +193,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
 
     private void prepareJob() {
         try {
-            String query = "SELECT id, chunk_two FROM `job` "
+            String query = "SELECT id, chunk_one, chunk_two FROM `job` "
                     + "WHERE `prefix` LIKE '" + prefix + "' "
                     + "AND `type` LIKE 'merge_r" + round + "' "
                     + "AND (`chunk_one` LIKE '" + leftFileName + "' "
@@ -249,8 +247,24 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             rightFilename = prefix + "/r" + round + "_chunk_" + rightId + ".txt";
             ready = isMergeReady(rightFilename);
             if (!ready) {
+                // This file or pair file might get skipped, check its name from db
                 connectionPool = getMySqlConnectionPool();
                 prepareJob();
+                if (sortedFilename.equals(leftFileName)) {
+                    ready = isMergeReady(rightFilename);
+                } else {
+                    ready = isMergeReady(leftFileName);
+                }
+                if (ready) { // Now we made sure to check correct pair file
+                    firstSplit = leftFileName.split("/");
+                    prefix = firstSplit[0];
+                    filename = firstSplit[1];
+                    fields = filename.split("_");
+                    round = Integer.parseInt(fields[0].substring(1));
+                    chunkId = Integer.parseInt(fields[2].substring(0, fields[2].indexOf(".")));
+                    leftId = chunkId;
+                    rightId = leftId + 1;
+                }
             }
         } else {
             leftId = chunkId - 1;
@@ -260,11 +274,6 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             ready = isMergeReady(leftFileName);
         }
         outFilename = prefix + "/r" + (round + 1) + "_chunk_" + (leftId / 2) + ".txt";
-        isMoveJob = checkIfJobMoveOnly();
-    }
-
-    private boolean checkIfJobMoveOnly() {
-        return false;
     }
 
     private boolean isMergeReady(String filename) {
@@ -294,6 +303,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
 
             while (results.next()) {
                 jobId = results.getInt("id");
+                leftFileName = results.getString("chunk_one");
                 rightFilename = results.getString("chunk_two");
             }
             connection.close();
