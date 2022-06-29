@@ -82,6 +82,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(1, prefix);
             statement.setString(2, "merge_r" + round);
+            logger.info("Checking if round:" + round + " is the last round for prefix:" + prefix);
             ResultSet results = statement.executeQuery();
 
             while (results.next()) {
