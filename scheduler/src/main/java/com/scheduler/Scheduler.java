@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
@@ -89,18 +90,15 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
 
     public void createMergeJobs(String prefix, int chunkCount) {
         int round = 0;
-        ArrayList<String> skipChunks = new ArrayList<String>();
-        ArrayList<String> targetChunkNames = new ArrayList<String>();
+        HashMap<String, String> jobFixMap = new HashMap<String, String>();
         do {
             for (int i = 0; i < chunkCount; i += 2) {
                 logger.info("Round:" + round + " , left:" + i + " , right:" + (i + 1) + " , output:" + (i / 2));
                 if (chunkCount == (i + 1)) {
                     String skipChunk = prefix + "/r" + round + "_chunk_" + i + ".txt";
                     String targetChunkName = getFutureChunkName(round, i, prefix);
-                    skipChunks.add(skipChunk);
-                    targetChunkNames.add(targetChunkName);
-                    // insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", "",
-                    // round);
+                    if (!jobFixMap.containsKey(targetChunkName))
+                        jobFixMap.put(targetChunkName, skipChunk);
                 } else {
                     insertMergeJob(prefix, prefix + "/r" + round + "_chunk_" + i + ".txt",
                             prefix + "/r" + round + "_chunk_" + (i + 1) + ".txt", round);
@@ -115,14 +113,14 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         } while (chunkCount > 1);
 
         // Remainders from merge tree will get updated here
-        for (int i = 0; i < skipChunks.size(); i++) {
-            updateMergeJob(targetChunkNames.get(i), skipChunks.get(i));
+        for (String target : jobFixMap.keySet()) {
+            updateMergeJob(target, jobFixMap.get(target));
         }
     }
 
     private void updateMergeJob(String target, String skipped) {
         try {
-            String query = "UPDATE `cloud_computing`.`job` SET `chunk_two` = '" + skipped + "' where `chunk_one` = '"
+            String query = "UPDATE `cloud_computing`.`job` SET `chunk_two` = '" + skipped + "' where `chunk_two` = '"
                     + target + "' ;";
             logger.info("Insert Merge Job Query:" + query);
             executeQuery(query);
