@@ -43,7 +43,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
 
     private DataSource connectionPool;
     private int round, leftId, rightId, chunkId;
-    private Integer jobId;
+    private Integer jobId = null;
     private String prefix, leftFileName, rightFilename, outFilename;
     private boolean ready = false;
     private BufferedReader leftBr, rightBr;
@@ -81,12 +81,13 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             connection = connectionPool.getConnection();
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(1, prefix);
-            statement.setString(2, "merge_r" + round);
+            statement.setString(2, "merge_r" + (round+1));
             logger.info("Checking if round:" + round + " is the last round for prefix:" + prefix);
             ResultSet results = statement.executeQuery();
 
             while (results.next()) {
-                isLastMerge = results.getInt("count") == 1;
+                isLastMerge = results.getInt("count") == 0;
+                logger.info("This if the final round, merging into ");
             }
             connection.close();
         } catch (SQLException e) {
