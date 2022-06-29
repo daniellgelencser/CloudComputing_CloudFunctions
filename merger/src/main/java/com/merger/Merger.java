@@ -38,7 +38,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
     private static final String projectId = System.getenv("GOOGLE_CLOUD_PROJECT");
     public static final String outputBucket = System.getenv("OUTPUT_BUCKET");
 
-    private static final int chunkSize = 4 * 1024 * 1024; // X MB
+    private static final int chunkSize = 8 * 1024 * 1024; // X MB
     private static final byte[] lineFeed = { '\n' };
 
     private DataSource connectionPool;
