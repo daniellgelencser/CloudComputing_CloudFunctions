@@ -38,7 +38,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
     private static final String projectId = System.getenv("GOOGLE_CLOUD_PROJECT");
     public static final String outputBucket = System.getenv("OUTPUT_BUCKET");
 
-    private static final int chunkSize = 1024 * 1024;
+    private static final int chunkSize = 20 * 1024 * 1024; // 20 MB
     private static final byte[] lineFeed = { '\n' };
 
     private DataSource connectionPool;
@@ -87,7 +87,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
 
             while (results.next()) {
                 isLastMerge = results.getInt("count") == 0;
-                logger.info("This if the final round, merging into ");
+                logger.info("This if the final round, merging into final bucket");
             }
             connection.close();
         } catch (SQLException e) {

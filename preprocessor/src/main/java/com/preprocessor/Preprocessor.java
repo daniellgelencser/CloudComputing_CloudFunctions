@@ -31,7 +31,7 @@ public class Preprocessor implements BackgroundFunction<GcsEvent> {
   public static final String outputBucket = System.getenv("OUTPUT_BUCKET");
   public static final String projectId = System.getenv("GOOGLE_CLOUD_PROJECT");
 
-  private static final int chunkSize = 1024 * 1024;
+  private static final int chunkSize = 20 * 1024 * 1024; // 20MB
 
   private String inputBucket, fileName;
 
