@@ -43,7 +43,8 @@ public class Merger implements BackgroundFunction<GCSEvent> {
     private static final byte[] lineFeed = { '\n' };
 
     private DataSource connectionPool;
-    private int round, leftId, rightId, jobId, chunkId;
+    private int round, leftId, rightId, chunkId;
+    private Integer jobId;
     private String prefix, leftFileName, rightFilename, outFilename;
     private boolean ready = false;
     private BufferedReader leftBr, rightBr;
@@ -63,34 +64,15 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             return;
         }
 
-        connectionPool = getMySqlConnectionPool();
-        prepareJob();
+        if (connectionPool == null)
+            connectionPool = getMySqlConnectionPool();
 
-        if (!ready) {
-            if (rightFilename == null || rightFilename.equals("")) {
-                isMoveJob = true;
-            } else {
-                logger.info("When pair is ready, processing will start");
-                return;
-            }
-        }
+        if (jobId == null)
+            prepareJob();
 
         markJobInProgress();
-        if (isMoveJob) {
-            moveBlob();
-        } else {
-            mergeFiles();
-        }
+        mergeFiles();
         markJobDone();
-    }
-
-    private void moveBlob() {
-        // Simple Rename Job
-        Blob blob = storage.get(inputBucket, leftFileName);
-        // Write a copy of the object to the target bucket
-        CopyWriter copyWriter = blob.copyTo(inputBucket, prefix + "/r" + (round / 2) + "_chunk_" + leftId + ".txt");
-        Blob copiedBlob = copyWriter.getResult();
-        // blob.delete() // this is disabled for palindromer. Files will be deleted by bucket rules
     }
 
     private BlobId getOutBlobId() throws SQLException {
@@ -216,7 +198,8 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             String query = "SELECT id, chunk_two FROM `job` "
                     + "WHERE `prefix` LIKE '" + prefix + "' "
                     + "AND `type` LIKE 'merge_r" + round + "' "
-                    + "AND `chunk_one` LIKE '" + leftFileName + "'"
+                    + "AND (`chunk_one` LIKE '" + leftFileName + "' "
+                    + ((chunkId % 2 == 0) ? ("OR `chunk_two` LIKE '" + rightFilename + "') ") : ") ")
                     // + "AND `chunk_two` LIKE '" + rightFilename +"'"
                     + "LIMIT 1;";
             logger.info("Query:" + query);
@@ -265,6 +248,10 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             leftFileName = sortedFilename;
             rightFilename = prefix + "/r" + round + "_chunk_" + rightId + ".txt";
             ready = isMergeReady(rightFilename);
+            if (!ready) {
+                connectionPool = getMySqlConnectionPool();
+                prepareJob();
+            }
         } else {
             leftId = chunkId - 1;
             rightId = chunkId;

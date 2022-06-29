@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -64,7 +65,7 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
             logger.info(blob.getName());
             insertSortJob(prefix, blob.getName());
             try {
-                publishStartSorter(prefix+","+count);
+                publishStartSorter(prefix + "," + count);
             } catch (IOException | InterruptedException | ExecutionException | TimeoutException e) {
                 logger.severe(e.getMessage());
             }
@@ -74,7 +75,8 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
         createMergeJobs(prefix, count);
     }
 
-    public void publishStartSorter(String prefix) throws IOException, InterruptedException, ExecutionException, TimeoutException {
+    public void publishStartSorter(String prefix)
+            throws IOException, InterruptedException, ExecutionException, TimeoutException {
         String topic = "start_sorter";
         logger.info("Publishing message to topic: " + topic);
 
@@ -87,48 +89,81 @@ public class Scheduler implements BackgroundFunction<PubSubMessage> {
 
     public void createMergeJobs(String prefix, int chunkCount) {
         int round = 0;
+        ArrayList<String> skipChunks = new ArrayList<String>();
+        ArrayList<String> targetChunkNames = new ArrayList<String>();
         do {
             for (int i = 0; i < chunkCount; i += 2) {
-                logger.info("Round:"+round+" , left:"+i+" , right:"+(i+1)+ " , output:"+(i/2));
-                if(chunkCount==(i+1)){
-                    insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", "", round);
+                logger.info("Round:" + round + " , left:" + i + " , right:" + (i + 1) + " , output:" + (i / 2));
+                if (chunkCount == (i + 1)) {
+                    String skipChunk = prefix + "/r" + round + "_chunk_" + i + ".txt";
+                    String targetChunkName = getFutureChunkName(round, i, prefix);
+                    skipChunks.add(skipChunk);
+                    targetChunkNames.add(targetChunkName);
+                    // insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", "",
+                    // round);
                 } else {
-                    insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", prefix + "/r"+round+"_chunk_" + (i+1) + ".txt", round);
+                    insertMergeJob(prefix, prefix + "/r" + round + "_chunk_" + i + ".txt",
+                            prefix + "/r" + round + "_chunk_" + (i + 1) + ".txt", round);
                 }
             }
             round++;
-            if(chunkCount%2==0) {
-                chunkCount/=2;
+            if (chunkCount % 2 == 0) {
+                chunkCount /= 2;
             } else {
-                chunkCount=(int)Math.ceil((double)(chunkCount)/2.0);
+                chunkCount = (int) Math.ceil((double) (chunkCount) / 2.0);
             }
-        }while(chunkCount>1) ;
+        } while (chunkCount > 1);
+
+        // Remainders from merge tree will get updated here
+        for (int i = 0; i < skipChunks.size(); i++) {
+            updateMergeJob(targetChunkNames.get(i), skipChunks.get(i));
+        }
+    }
+
+    private void updateMergeJob(String target, String skipped) {
+        try {
+            String query = "UPDATE `cloud_computing`.`job` SET `chunk_two` = '" + skipped + "' where `chunk_one` = '"
+                    + target + "' ;";
+            logger.info("Insert Merge Job Query:" + query);
+            executeQuery(query);
+        } catch (SQLException e) {
+            logger.severe(e.getMessage());
+        }
+    }
+
+    private String getFutureChunkName(int round, int i, String prefix) {
+        do {
+            round++;
+            i /= 2;
+        } while (i % 2 == 0);
+        return prefix + "/r" + round + "_chunk_" + i + ".txt";
     }
 
     // public void createMergeJobs(String prefix, int chunkCount) {
-    //     int x = 1;
-    //     int round = 0;
-    //     do {
+    // int x = 1;
+    // int round = 0;
+    // do {
 
-    //         x *= 2;
-    //         for (int i = 0; i < chunkCount; i += x) {
-    //             int y = i + x / 2 ;
-    //             if (y > chunkCount) {
-    //                 continue;
-    //             }
-    //             insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", prefix + "/chunk_" + y + ".txt", round);
-    //         }
-    //         round++;
+    // x *= 2;
+    // for (int i = 0; i < chunkCount; i += x) {
+    // int y = i + x / 2 ;
+    // if (y > chunkCount) {
+    // continue;
+    // }
+    // insertMergeJob(prefix, prefix + "/r"+round+"_chunk_" + i + ".txt", prefix +
+    // "/chunk_" + y + ".txt", round);
+    // }
+    // round++;
 
-    //     } while (x < chunkCount);
+    // } while (x < chunkCount);
     // }
 
     public void insertMergeJob(String prefix, String chunk1, String chunk2, int round) {
         try {
             String query = "INSERT INTO `cloud_computing`.`job` (`prefix`, `type`, `chunk_one`, `chunk_two`, `status`)"
-                            + " VALUES ('" + prefix + "', 'merge_r" + round + "', '" + chunk1 + "', '" + chunk2
-                            + "', 'pending')";
-            logger.info("Insert Merge Job Query:"+query);
+                    + " VALUES ('" + prefix + "', 'merge_r" + round + "', '" + chunk1 + "', '" + chunk2
+                    + "', 'pending')";
+            logger.info("Insert Merge Job Query:" + query);
             executeQuery(query);
         } catch (SQLException e) {
             logger.severe(e.getMessage());
