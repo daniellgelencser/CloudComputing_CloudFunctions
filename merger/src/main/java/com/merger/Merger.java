@@ -290,6 +290,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
         Connection connection = connectionPool.getConnection();
         PreparedStatement statement = connection.prepareStatement(query);
         int result = statement.executeUpdate();
+        statement.close();
         connection.close();
         return result;
     }
