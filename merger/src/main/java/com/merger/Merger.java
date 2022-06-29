@@ -21,6 +21,7 @@ import com.google.cloud.functions.Context;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.CopyWriter;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.merger.Merger.GCSEvent;
@@ -38,11 +39,11 @@ public class Merger implements BackgroundFunction<GCSEvent> {
     private static final String projectId = System.getenv("GOOGLE_CLOUD_PROJECT");
     public static final String outputBucket = System.getenv("OUTPUT_BUCKET");
 
-    private static final int chunkSize = 1024*1024;
+    private static final int chunkSize = 1024 * 1024;
     private static final byte[] lineFeed = { '\n' };
 
     private DataSource connectionPool;
-    private int round, leftId, rightId, jobId;
+    private int round, leftId, rightId, jobId, chunkId;
     private String prefix, leftFileName, rightFilename, outFilename;
     private boolean ready = false;
     private BufferedReader leftBr, rightBr;
@@ -50,22 +51,46 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             outList = new ArrayList<String>();
     private BlobInfo outputInfo;
     private WriteChannel writer;
+    private boolean isMoveJob = false;
 
     @Override
     public void accept(GCSEvent event, Context context) throws SQLException, IOException {
         logger.info("Processing file: " + event.name);
 
         prepareFields(event.name); // Get necessary fields and check if pair file is ready
-        if (!ready) {
+        if (!ready && chunkId % 2 != 0) {
             logger.info("When pair is ready, processing will start");
             return;
         }
 
         connectionPool = getMySqlConnectionPool();
         prepareJob();
+
+        if (!ready) {
+            if (rightFilename == null || rightFilename.equals("")) {
+                isMoveJob = true;
+            } else {
+                logger.info("When pair is ready, processing will start");
+                return;
+            }
+        }
+
         markJobInProgress();
-        mergeFiles();
+        if (isMoveJob) {
+            moveBlob();
+        } else {
+            mergeFiles();
+        }
         markJobDone();
+    }
+
+    private void moveBlob() {
+        // Simple Rename Job
+        Blob blob = storage.get(inputBucket, leftFileName);
+        // Write a copy of the object to the target bucket
+        CopyWriter copyWriter = blob.copyTo(inputBucket, prefix + "/r" + (round / 2) + "_chunk_" + leftId + ".txt");
+        Blob copiedBlob = copyWriter.getResult();
+        // blob.delete() // this is disabled for palindromer. Files will be deleted by bucket rules
     }
 
     private BlobId getOutBlobId() throws SQLException {
@@ -233,7 +258,7 @@ public class Merger implements BackgroundFunction<GCSEvent> {
         String filename = firstSplit[1];
         String[] fields = filename.split("_");
         round = Integer.parseInt(fields[0].substring(1));
-        int chunkId = Integer.parseInt(fields[2].substring(0, fields[2].indexOf(".")));
+        chunkId = Integer.parseInt(fields[2].substring(0, fields[2].indexOf(".")));
         if (chunkId % 2 == 0) {
             leftId = chunkId;
             rightId = leftId + 1;
@@ -248,6 +273,11 @@ public class Merger implements BackgroundFunction<GCSEvent> {
             ready = isMergeReady(leftFileName);
         }
         outFilename = prefix + "/r" + (round + 1) + "_chunk_" + (leftId / 2) + ".txt";
+        isMoveJob = checkIfJobMoveOnly();
+    }
+
+    private boolean checkIfJobMoveOnly() {
+        return false;
     }
 
     private boolean isMergeReady(String filename) {
